@@ -1,0 +1,15 @@
+spring_profile = "dev"
+
+replicas = 2
+
+resources = {
+  requests = {
+    cpu    = "100m"
+    memory = "128Mi"
+  }
+
+  limits = {
+    cpu    = "500m"
+    memory = "512Mi"
+  }
+}
