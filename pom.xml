@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.devlink</groupId>
 	<artifactId>userservice</artifactId>
-	<version>0.0.1</version>
+	<version>0.0.0</version>
 	<name>userservice</name>
 	<description>DevLink User Service</description>
 	<url/>
