@@ -235,21 +235,46 @@ pipeline {
 
         stage('Release Version') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'devlink-github',
-                                          usernameVariable: 'GITHUB_APP',
-                                          passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                    sh """
-                        set -e
-                        git config user.name  "devlink-jenkins"
-                        git config user.email "jenkins@devlink.local"
+                container('gh') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'devlink-github',
+                        usernameVariable: 'GITHUB_APP',
+                        passwordVariable: 'GITHUB_ACCESS_TOKEN'
+                    )]) {
+                        script {
+                            sh """
+                                set -e
+                                git config user.name "devlink-jenkins"
+                                git config user.email "jenkins@devlink.local"
 
-                        git add pom.xml
-                        git commit -m "chore(release): ${RELEASE_VERSION}" || echo "Nothing to commit"
+                                git add pom.xml
+                                git commit -m "chore(release): ${RELEASE_VERSION}" || echo "Nothing to commit"
 
-                        git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" || echo "Tag exists"
+                                git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" || echo "Tag exists"
 
-                        git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-user-service.git HEAD:${GIT_BRANCH} --tags
-                    """
+                                git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-user-service.git HEAD:${GIT_BRANCH} --tags
+                            """
+
+                            writeFile file: 'changelog.txt', text: env.CHANGELOG
+
+                            sh '''
+                                set -e
+
+                                export GH_TOKEN=$GITHUB_ACCESS_TOKEN
+
+                                if gh release view v$RELEASE_VERSION \
+                                    --repo bccalegari/dev-link-user-service >/dev/null 2>&1; then
+                                    echo "GitHub release v$RELEASE_VERSION already exists, skipping"
+                                    exit 0
+                                fi
+
+                                gh release create v$RELEASE_VERSION \
+                                    --repo bccalegari/dev-link-user-service \
+                                    --title "Release $RELEASE_VERSION" \
+                                    --notes-file changelog.txt
+                            '''
+                        }
+                    }
                 }
             }
         }
@@ -261,25 +286,22 @@ pipeline {
                                         passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
                     sh """
                         set -e
-                        git config user.name  "devlink-jenkins"
-                        git config user.email "jenkins@devlink.local"
 
                         git clone --recurse-submodules https://${GITHUB_APP}:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-monorepo.git dev-link-monorepo
                         cd dev-link-monorepo
 
-                        git submodule update --remote --merge dev-link-user-service
+                        git config user.name  "devlink-jenkins"
+                        git config user.email "jenkins@devlink.local"
+
+                        git submodule update --remote dev-link-user-service
 
                         if git diff --quiet --exit-code dev-link-user-service; then
                             echo "No submodule change, skipping commit and tag"
-                            exit 0
                         else
                             git add dev-link-user-service
                             git commit -m "chore: bump dev-link-user-service to ${RELEASE_VERSION}"
-                            git tag -a "dev-link-user-service-v${RELEASE_VERSION}" -m "Release dev-link-user-service ${RELEASE_VERSION}"
+                            git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-monorepo.git HEAD:${GIT_BRANCH}
                         fi
-
-                        git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-monorepo.git HEAD:${GIT_BRANCH}
-                        git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-monorepo.git --tags || echo "Tags already exist"
                     """
                 }
             }
