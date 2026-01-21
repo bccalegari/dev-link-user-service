@@ -248,7 +248,7 @@ pipeline {
                                 git config user.email "jenkins@devlink.local"
 
                                 git add pom.xml
-                                git commit -m "chore(release): ${RELEASE_VERSION}" || echo "Nothing to commit"
+                                git commit -m "chore(release): v${RELEASE_VERSION}" || echo "Nothing to commit"
 
                                 git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" || echo "Tag exists"
 
@@ -299,7 +299,7 @@ pipeline {
                             echo "No submodule change, skipping commit and tag"
                         else
                             git add dev-link-user-service
-                            git commit -m "chore: bump dev-link-user-service to ${RELEASE_VERSION}"
+                            git commit -m "chore: bump dev-link-user-service to v${RELEASE_VERSION}"
                             git push https://x-access-token:${GITHUB_ACCESS_TOKEN}@github.com/bccalegari/dev-link-monorepo.git HEAD:${GIT_BRANCH}
                         fi
                     """
